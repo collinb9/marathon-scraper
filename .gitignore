@@ -1,0 +1,5 @@
+venv/
+.env
+*.out
+config.json
+contacts.txt
