@@ -21,3 +21,7 @@ Here is an example `config.json` file
 ```
 
 The `contacts.txt` file is a newline-separated list of email addresses to send alerts to.
+
+The script expects the following environment variables to be set:
+* `EMAIL`: The email from which to send alerts.
+* `PASSWORD`: The password for the email account.

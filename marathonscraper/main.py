@@ -46,7 +46,6 @@ def send_alert(contacts_path, url):
         server.login(EMAIL, PASSWORD)
         server.send_message(msg, EMAIL, contacts)
         print("Email successfully sent")
-            # kit.sendwhatmsg_instantly(contact, message)
 
 
 def watch_webpage(url, interval, outfile, contacts, dryrun=False):
