@@ -7,7 +7,7 @@ import smtplib
 import ssl
 from email.message import EmailMessage
 import requests
-
+from bs4 import BeautifulSoup, Comment
 
 EMAIL = os.environ["EMAIL"]
 PASSWORD = os.environ["PASSWORD"]
@@ -15,12 +15,21 @@ PASSWORD = os.environ["PASSWORD"]
 CONTEXT = ssl.create_default_context()
 
 
+def strip_comments(html):
+    soup = BeautifulSoup(html, "html.parser")
+    comments = soup.find_all(string=lambda text: isinstance(text, Comment))
+
+    for comment in comments:
+        comment.extract()
+    return soup
+
+
 def fetch_webpage_content(url, outfile):
     response = requests.get(url)
     if response.status_code == 200:
         content = response.text
-        with open(outfile, "w+") as fh:
-            fh.write(content)
+        content = strip_comments(content)
+        save_output(content, outfile)
         return content
 
     print(f"Failed to fetch {url}")
@@ -34,18 +43,26 @@ def detect_change(previous_content, current_content):
 def send_alert(contacts_path, url):
     with open(contacts_path, "r") as fh:
         contacts = [line.replace("\n", "") for line in fh.readlines()]
+    if len(contacts) == 0:
+        print("No contacts found. Skipping email")
+        return
     message = f"Webpage at {url} has changed."
     msg = EmailMessage()
-    content = f'{message}\n'
+    content = f"{message}\n"
     msg.set_content(content)
-    msg['Subject'] = "Change detected"
-    msg['From'] = EMAIL
-    msg['To'] = contacts
+    msg["Subject"] = "Change detected"
+    msg["From"] = EMAIL
+    msg["To"] = contacts
     print("Contacts:", contacts)
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=CONTEXT) as server:
         server.login(EMAIL, PASSWORD)
         server.send_message(msg, EMAIL, contacts)
         print("Email successfully sent")
+
+
+def save_output(soup, outfile):
+    with open(outfile, "w+") as fh:
+        fh.write(soup.prettify())
 
 
 def watch_webpage(url, interval, outfile, contacts, dryrun=False):
@@ -60,15 +77,13 @@ def watch_webpage(url, interval, outfile, contacts, dryrun=False):
         if current_content is None:
             time.sleep(interval)
             continue
-
         if detect_change(previous_content, current_content) or dryrun:
             print(
                 f"Change detected for {url}",
                 time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
             )
             # Save current content for debugging
-            with open(str(time.time()) + outfile, "w+") as fh:
-                fh.write(current_content)
+            save_output(current_content, str(time.time()) + outfile)
             send_alert(contacts, url)
             previous_content = current_content
 

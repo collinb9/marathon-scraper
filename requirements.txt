@@ -4,6 +4,8 @@
 #
 #    pip-compile --no-emit-index-url
 #
+beautifulsoup4==4.12.3
+    # via -r requirements.in
 certifi==2024.2.2
     # via requests
 charset-normalizer==2.0.12
@@ -12,5 +14,7 @@ idna==3.6
     # via requests
 requests==2.27.1
     # via -r requirements.in
+soupsieve==2.5
+    # via beautifulsoup4
 urllib3==1.26.18
     # via requests
