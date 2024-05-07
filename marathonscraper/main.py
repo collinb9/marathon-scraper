@@ -15,12 +15,12 @@ PASSWORD = os.environ["PASSWORD"]
 CONTEXT = ssl.create_default_context()
 
 
-def strip_comments(html):
-    soup = BeautifulSoup(html, "html.parser")
+def strip_comments(soup):
     comments = soup.find_all(string=lambda text: isinstance(text, Comment))
 
     for comment in comments:
         comment.extract()
+
     return soup
 
 
@@ -28,9 +28,10 @@ def fetch_webpage_content(url, outfile):
     response = requests.get(url)
     if response.status_code == 200:
         content = response.text
-        content = strip_comments(content)
-        save_output(content, outfile)
-        return content
+        soup = BeautifulSoup(content, "html.parser")
+        strip_comments(soup)
+        save_output(soup, outfile)
+        return soup
 
     print(f"Failed to fetch {url}")
     return None
@@ -38,6 +39,14 @@ def fetch_webpage_content(url, outfile):
 
 def detect_change(previous_content, current_content):
     return previous_content != current_content
+
+def detect_tables(soup):
+    tables = soup.find_all("table")
+    return tables
+
+def should_notify(previous_content, current_content):
+    tables = detect_tables(current_content)
+    return detect_change(previous_content, current_content) and len(tables) > 0
 
 
 def send_alert(contacts_path, url):
@@ -61,6 +70,7 @@ def send_alert(contacts_path, url):
 
 
 def save_output(soup, outfile):
+    print(f"Saving output to {outfile}")
     with open(outfile, "w+") as fh:
         fh.write(soup.prettify())
 
@@ -77,13 +87,20 @@ def watch_webpage(url, interval, outfile, contacts, dryrun=False):
         if current_content is None:
             time.sleep(interval)
             continue
+        _outfile = str(time.time()) + outfile
         if detect_change(previous_content, current_content) or dryrun:
             print(
-                f"Change detected for {url}",
-                time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
+                f"Change detected at {url}",
+                time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+            )
+            save_output(current_content, _outfile)
+        if should_notify(previous_content, current_content) or dryrun:
+            print(
+                f"Ticket available at {url}",
+                time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
             )
             # Save current content for debugging
-            save_output(current_content, str(time.time()) + outfile)
+            save_output(current_content, _outfile)
             send_alert(contacts, url)
             previous_content = current_content
 
@@ -103,12 +120,13 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     config_path = args.config
+    print(args)
     with open(config_path, "r") as f:
         config = json.load(f)
     watch_webpage(
         config["url"],
         config.get("interval", 60),
-        config.get("outfile", "output.out"),
-        config.get("contacts", "contacts.txt"),
+        config["outfile"],
+        args.contacts,
         dryrun=args.dryrun,
     )
