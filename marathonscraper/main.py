@@ -42,11 +42,15 @@ def detect_change(previous_content, current_content):
 
 def detect_tables(soup):
     tables = soup.find_all("table")
-    return tables
+    return len(tables) > 0
 
-def should_notify(previous_content, current_content):
-    tables = detect_tables(current_content)
-    return detect_change(previous_content, current_content) and len(tables) > 0
+def detect_race_numbers_for_sale(soup):
+    bolds = [b.string.strip() for b in soup.find_all("b")]
+    return len(bolds) == 0 or bolds[0] != "There are currently no race numbers for sale. Try again later."
+
+
+def should_notify(previous_content, current_content, condition):
+    return detect_change(previous_content, current_content) and condition(current_content)
 
 
 def send_alert(contacts_path, url):
@@ -75,7 +79,11 @@ def save_output(soup, outfile):
         fh.write(soup.prettify())
 
 
-def watch_webpage(url, interval, outfile, contacts, dryrun=False):
+def watch_webpage(url, interval, outfile, site, contacts, dryrun=False):
+    if site == "onreg":
+        condition = detect_race_numbers_for_sale
+    else:
+        condition = detect_tables
     previous_content = fetch_webpage_content(url, outfile)
     if previous_content is None:
         sys.exit(1)
@@ -88,13 +96,7 @@ def watch_webpage(url, interval, outfile, contacts, dryrun=False):
             time.sleep(interval)
             continue
         _outfile = str(time.time()) + outfile
-        if detect_change(previous_content, current_content) or dryrun:
-            print(
-                f"Change detected at {url}",
-                time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-            )
-            save_output(current_content, _outfile)
-        if should_notify(previous_content, current_content) or dryrun:
+        if should_notify(previous_content, current_content, condition) or dryrun:
             print(
                 f"Ticket available at {url}",
                 time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
@@ -102,6 +104,13 @@ def watch_webpage(url, interval, outfile, contacts, dryrun=False):
             # Save current content for debugging
             save_output(current_content, _outfile)
             send_alert(contacts, url)
+            previous_content = current_content
+        elif detect_change(previous_content, current_content) or dryrun:
+            print(
+                f"Change detected at {url}",
+                time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+            )
+            save_output(current_content, _outfile)
             previous_content = current_content
 
         time.sleep(interval)
@@ -123,10 +132,12 @@ if __name__ == "__main__":
     print(args)
     with open(config_path, "r") as f:
         config = json.load(f)
+    print(config)
     watch_webpage(
         config["url"],
         config.get("interval", 60),
         config["outfile"],
+        config.get("site", "NONE"),
         args.contacts,
         dryrun=args.dryrun,
     )
