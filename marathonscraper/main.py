@@ -46,8 +46,15 @@ def detect_tables(soup):
 
 def detect_race_numbers_for_sale(soup):
     bolds = [b.string.strip() for b in soup.find_all("b")]
-    return len(bolds) == 0 or bolds[0] != "There are currently no race numbers for sale. Try again later."
-
+    for _bold in bolds:
+        if _bold == "There are currently no race numbers for sale. Try again later.":
+            print("No tickets available")
+            return False
+    btns = soup.find_all("a", {"class": "btn button_cphhalf"})
+    if len(btns)== 0:
+        print("All tickets are in the process of being purchased")
+        return False
+    return True
 
 def should_notify(previous_content, current_content, condition):
     return detect_change(previous_content, current_content) and condition(current_content)
