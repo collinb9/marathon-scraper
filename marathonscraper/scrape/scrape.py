@@ -113,6 +113,7 @@ class OnregScraper(Scraper):
                 == "There are currently no race numbers for sale. Try again later."
             ):
                 print("No tickets available")
+                self.tickets_available = []
                 return False
         btns = soup.find_all("a", {"class": "btn button_cphhalf"})
         if len(btns) == 0:
