@@ -131,20 +131,20 @@ class OnregScraper(Scraper):
         return params
 
     def make_message(self, response):
-        return f"""Ticket available at {response.url}.
-        Use cookies {response.cookies} to purchase ticket."""
+        ticket_url = response.history[-1].url
+        return f"""Ticket available at {ticket_url}."""
 
     def handle_notification(self):
+        current_time = str(time.time())
+        _outfile = current_time + self.config.outfile
+        self.save_output(self.current_content, _outfile)
+        # self.notifier.notify()
         ticket = self.tickets_available[0]
         href = ticket["href"]
         params = self.parse_parameters_from_href(href)
         params.update(self.query_params)
-        current_time = str(time.time())
-        _outfile = current_time + self.config.outfile
-        self.save_output(self.current_content, _outfile)
         content, response = self.fetch_webpage_content(query_params=params)
-        ticket_outfile = current_time + ".ticket." + self.config.outfile
+        ticket_outfile = current_time + f".ticket." + self.config.outfile
         self.save_output(content, ticket_outfile)
-        subject = "Ticket available"
         message = self.make_message(response)
-        self.notifier.notify(subject=subject, message=message)
+        self.notifier.notify(message=message)

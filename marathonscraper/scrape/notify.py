@@ -1,6 +1,7 @@
 import dataclasses
 import ssl
 import smtplib
+from urllib import parse
 from email.message import EmailMessage
 
 
@@ -39,10 +40,11 @@ class EmailNotifier(Notifier):
 
     def create_message(self, contacts, subject=None, message=None):
         msg = EmailMessage()
-        message = message or f"Webpage at {self.scraper.base_url} has changed."
+        query_params = "?" + parse.urlencode(self.scraper.query_params)
+        message = message or f"Ticket available at {self.scraper.base_url + query_params}."
         content = f"{message}\n"
         msg.set_content(content)
-        msg["Subject"] = subject or "Change detected"
+        msg["Subject"] = subject or "Ticket available"
         msg["From"] = self.config.sender_email
         msg["To"] = contacts
         return msg
