@@ -7,6 +7,7 @@ from marathonscraper import (
     EmailNotifier,
     ScraperConfig,
     OnregScraper,
+    Scraper
 )
 
 EMAIL = os.environ["EMAIL"]
@@ -36,7 +37,12 @@ if __name__ == "__main__":
     email_config = EmailNotifierConfig(**_email_config)
     email_notifier = EmailNotifier(email_config)
 
+    scraper_type = config.pop("type", None)
+    if scraper_type == "onreg":
+        _scraper = OnrefScraper
+    else:
+        _scraper = Scraper
     scaper_config = ScraperConfig(**config["scraper"])
-    scraper = OnregScraper(scaper_config, email_notifier)
+    scraper = _scraper(scaper_config, email_notifier)
 
     scraper.watch_webpage(dryrun=args.dryrun)

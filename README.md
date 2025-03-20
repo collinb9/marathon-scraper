@@ -14,9 +14,14 @@ Here is an example `config.json` file
 
 ```json
 {
-  "url": "https://example.com",
-  "interval": 30,
-  "outfile": "out.out"
+  "scraper": {
+    "url": "https://example.com",
+    "interval": 5,
+    "outfile": "out.out"
+  },
+  "notifier": {
+    "contacts": "contacts.txt"
+  }
 }
 ```
 

@@ -3,6 +3,7 @@ import dataclasses
 import time
 from urllib import parse
 import requests
+from typing import Optional
 from bs4 import BeautifulSoup, Comment
 
 
@@ -24,7 +25,8 @@ def detect_tables(soup: BeautifulSoup):
 class ScraperConfig:
     interval: int
     outfile: str
-    query_params: dict
+    query_params: Optional[dict] = None
+    url: Optional[str] = None
 
 
 class Scraper:
@@ -37,19 +39,24 @@ class Scraper:
         self.current_content = None
         self.notifier = notifier
         self.notifier.scraper = self
-        self.query_params.update(config.query_params)
         self.tickets_available = []
+        if config.query_params is not None:
+            self.query_params.update(config.query_params)
+        if config.url is not None:
+            self.base_url = config.url
 
     def detect_available_tickets(self, soup: BeautifulSoup, dryrun=False):
         pass
 
     def should_notify(self):
+        # return self.detect_change() and len(self.tickets_available) > 0
         return self.detect_change() and len(self.tickets_available) > 0
 
     def fetch_webpage_content(self, url=None, query_params=None):
         url = url or self.base_url
         query_params = query_params or self.query_params
-        response = requests.get(url, params=query_params)
+
+        response = requests.get(url, params=query_params, headers = {"User-Agent": ""})
         if response.status_code == 200:
             content = response.text
             soup = BeautifulSoup(content, "html.parser")
@@ -57,6 +64,8 @@ class Scraper:
             return soup, response
 
         print(f"Failed to fetch {response.url}")
+        # print(response.json())
+        print(response.request.headers)
         return None, None
 
     def detect_change(self):
@@ -73,7 +82,8 @@ class Scraper:
     def handle_notification(self):
         _outfile = str(time.time()) + self.config.outfile
         self.save_output(self.current_content, _outfile)
-        self.notifier.notify()
+        message = """Change Detected"""
+        self.notifier.notify(message=message)
 
     def _watch_webpage(self, dryrun=False):
         self.previous_content, _ = self.fetch_webpage_content()
@@ -87,6 +97,7 @@ class Scraper:
         while True:
             self.current_content, _ = self.fetch_webpage_content()
             if self.current_content is None:
+                print("Response is empty")
                 time.sleep(self.config.interval)
                 continue
             self.detect_available_tickets(self.current_content, dryrun=dryrun)
@@ -103,6 +114,9 @@ class Scraper:
 class OnregScraper(Scraper):
     base_url = "https://secure.onreg.com/onreg2/bibexchange/"
     query_params = {"language": "us"}
+
+    def should_notify(self):
+        return self.detect_change() and len(self.tickets_available) > 0
 
     def detect_available_tickets(self, soup: BeautifulSoup, dryrun=False):
 

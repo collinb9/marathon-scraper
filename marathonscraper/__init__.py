@@ -1,1 +1,1 @@
-from .scrape import EmailNotifierConfig, EmailNotifier, ScraperConfig, OnregScraper
+from .scrape import EmailNotifierConfig, EmailNotifier, ScraperConfig, OnregScraper, Scraper
