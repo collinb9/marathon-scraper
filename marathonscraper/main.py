@@ -7,6 +7,7 @@ from marathonscraper import (
     EmailNotifier,
     ScraperConfig,
     OnregScraper,
+    SportstimingScraper,
     Scraper
 )
 
@@ -39,7 +40,11 @@ if __name__ == "__main__":
 
     scraper_type = config.pop("type", None)
     if scraper_type == "onreg":
-        _scraper = OnrefScraper
+        _scraper = OnregScraper
+    elif scraper_type == "sportstiming":
+        _scraper = SportstimingScraper
+    elif scraper_type is not None:
+        raise ValueError(f"Scraper type: {scraper_type} is not valid")
     else:
         _scraper = Scraper
     scaper_config = ScraperConfig(**config["scraper"])
